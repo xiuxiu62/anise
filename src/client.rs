@@ -2,9 +2,9 @@ use crate::Options;
 
 use std::{error::Error, process, time::Duration};
 
-use fancy_regex::{Match, Matches, Regex};
+use fancy_regex::{Matches, Regex};
 use owo_colors::{colors::Red, OwoColorize};
-use structopt::lazy_static::lazy_static;
+use scraper::{Html, Selector};
 use ureq::{Agent, AgentBuilder};
 
 const PLAYER_FN: &'static str = "mpv";
@@ -37,26 +37,20 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub fn search_anime<'r, 't>(
-        &self,
-        title: &str,
-    ) -> Result<Option<Matches<'r, 't>>, Box<dyn Error>> {
+    pub fn search_anime<'r, 't>(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
-        let re: Regex =
-            Regex::new(r#"s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p"#)?;
+        let a_selector = Selector::parse("a").unwrap();
 
         let response = self.agent.get(&url).call()?;
-        let data = response.into_string()?;
-        let matches = re.find_iter(&data).map(|mat| mat).collect();
-        println!("{matches:?}");
+        let doc = Html::parse_document(&response.into_string()?);
+        let titles: Vec<String> = doc
+            .select(&a_selector)
+            .filter(|elem| elem.inner_html().contains(&title))
+            .map(|elem| elem.value().attr("title").unwrap().to_string())
+            .collect();
 
-        // println!("{data:?}");
-        // let matches = re.captures_iter(&data);
-        // println!("{matches:?}");
-
-        // Ok(matches)
-        Ok(None)
+        Ok(titles)
     }
 
     // Get available episodes from an id
