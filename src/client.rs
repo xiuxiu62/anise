@@ -1,15 +1,18 @@
 use crate::Options;
 
-use std::{error::Error, process};
+use std::{error::Error, process, time::Duration};
 
-use fancy_regex::{Matches, Regex};
+use fancy_regex::{Match, Matches, Regex};
 use owo_colors::{colors::Red, OwoColorize};
+use structopt::lazy_static::lazy_static;
+use ureq::{Agent, AgentBuilder};
 
 const PLAYER_FN: &'static str = "mpv";
 const BASE_API_URL: &'static str = "https://gogoanime.vc";
 // const LOGFILE: &'static str = "${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts";
 
 pub struct Client {
+    agent: Agent,
     title: String,
     download: bool,
     cont: bool,
@@ -19,7 +22,13 @@ pub struct Client {
 impl Client {
     pub fn new(options: Options) -> Self {
         let title = options.title.unwrap_or("".to_string());
+        let agent = AgentBuilder::new()
+            .timeout_read(Duration::from_secs(5))
+            .timeout_write(Duration::from_secs(5))
+            .build();
+
         Self {
+            agent,
             title,
             download: options.download,
             cont: options.cont,
@@ -28,27 +37,30 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub async fn search_anime<'r, 't>(
+    pub fn search_anime<'r, 't>(
         &self,
         title: &str,
     ) -> Result<Option<Matches<'r, 't>>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
-        let url = format!("{}//search.html?keyword={}", BASE_API_URL, title);
-        let re =
+        let url = format!("{BASE_API_URL}//search.html?keyword={title}");
+        let re: Regex =
             Regex::new(r#"s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p"#)?;
 
-        let response = reqwest::get(url).await?;
-        let data = response.text().await?;
-        let matches = re.captures_iter(&data);
+        let response = self.agent.get(&url).call()?;
+        let data = response.into_string()?;
+        let matches = re.find_iter(&data).map(|mat| mat).collect();
+        println!("{matches:?}");
 
-        println!("{:?}", matches.count());
+        // println!("{data:?}");
+        // let matches = re.captures_iter(&data);
+        // println!("{matches:?}");
 
         // Ok(matches)
         Ok(None)
     }
 
     // Get available episodes from an id
-    pub async fn search_episodes<'r, 't>(
+    pub fn search_episodes<'r, 't>(
         &self,
         id: &str,
     ) -> Result<Option<Matches<'r, 't>>, Box<dyn Error>> {
@@ -60,9 +72,9 @@ impl Client {
 		}"#,
         )?;
 
-        let response = reqwest::get(url).await?;
-        let data = response.text().await?;
-        let matches = re.find_iter(&data);
+        let response = self.agent.get(&url).call()?;
+        let data = response.into_string()?;
+        let matches = re.captures_iter(&data);
 
         Ok(None)
     }
