@@ -37,18 +37,22 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub fn search_anime<'r, 't>(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    pub fn search_anime<'a>(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
         let a_selector = Selector::parse("a").unwrap();
 
         let response = self.agent.get(&url).call()?;
         let doc = Html::parse_document(&response.into_string()?);
-        let titles: Vec<String> = doc
+        let titles = doc
             .select(&a_selector)
             .filter(|elem| elem.inner_html().contains(&title))
-            .map(|elem| elem.value().attr("title").unwrap().to_string())
-            .collect();
+            .fold(Vec::new(), |mut acc, elem| {
+                if let Some(title) = elem.value().attr("title") {
+                    acc.push(title.to_string());
+                }
+                acc
+            });
 
         Ok(titles)
     }

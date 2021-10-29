@@ -17,5 +17,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let response = client.search_anime("violet evergarden")?;
     response.iter().for_each(|t| println!("{t}"));
 
+    let response = client.search_anime("naruto")?;
+    response.iter().for_each(|t| println!("{t}"));
+
     Ok(())
 }
