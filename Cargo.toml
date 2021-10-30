@@ -1,15 +1,16 @@
 [package]
-name = "ani-cli-rs"
+name = "anise"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "ani-cli"
+name = "anise"
 path = "src/main.rs"
 
 [dependencies]
-thiserror = "1.0.30"
+regex = "1.5.4"
 scraper = "0.12.0"
 structopt = "0.3.25"
+thiserror = "1.0.30"
 ureq = { version = "2.3.0" }
 owo-colors = "3.0.1"

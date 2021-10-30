@@ -3,12 +3,19 @@ use crate::Options;
 use std::{error::Error, fmt::Debug, process, time::Duration};
 
 use owo_colors::{colors::Red, OwoColorize};
+use regex::Regex;
 use scraper::{html, ElementRef, Html, Selector};
 use ureq::{Agent, AgentBuilder, Response};
 
 const PLAYER_FN: &str = "mpv";
 const BASE_API_URL: &str = "https://gogoanime.vc";
 // const LOGFILE: &str = "${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts";
+
+#[derive(Debug)]
+struct Show {
+    name: String,
+    id: String,
+}
 
 pub struct Client {
     agent: Agent,
@@ -36,7 +43,7 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub fn search_anime(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    pub fn search_anime(&self, title: &str) -> Result<Vec<Show>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
         let response = self.agent.get(&url).call()?;
@@ -44,14 +51,22 @@ impl Client {
             select
                 .filter(|elem| elem.inner_html().contains(&title))
                 .fold(Vec::new(), |mut acc: Vec<String>, elem: ElementRef| {
-                    if let Some(title) = elem.value().attr("title") {
-                        acc.push(title.to_string());
+                    if let Some(name) = elem.value().attr("title") {
+                        acc.push(name.to_string());
                     }
                     acc
                 })
         };
 
-        parse_response_by_selector(response, "a", parse_method)
+        let names = parse_response_by_selector(response, "a", parse_method)?;
+        let ids = names.into_iter().map(|name| match strip_title(&name));
+        let shows = names
+            .into_iter()
+            .zip(ids)
+            .map(|(name, id)| Show { name, id })
+            .collect();
+
+        Ok(shows)
     }
 
     // Get available episodes from a title
@@ -98,4 +113,12 @@ where
     let result = parse_method(doc.select(&selector));
 
     Ok(result)
+}
+
+fn strip_title(title: &str) -> Result<String, Box<dyn Error>> {
+    let title = title.to_string().to_lowercase();
+    let re_non_alpha_numeric = Regex::new(r"/[^a-z0-9]/g")?;
+
+    re_non_alpha_numeric.replace_all(&title, "");
+    Ok(title)
 }

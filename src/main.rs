@@ -15,13 +15,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let options = Options::from_args();
     let client = Client::new(options);
     let response = client.search_anime("violet evergarden")?;
-    response.iter().for_each(|t| println!("{t}"));
+    response.iter().for_each(|show| println!("{show:?}"));
 
     let response = client.search_anime("naruto")?;
-    response.iter().for_each(|t| println!("{t}"));
+    response.iter().for_each(|show| println!("{show:?}"));
 
     let response = client.search_anime("akame")?;
-    response.iter().for_each(|t| println!("{t}"));
+    response.iter().for_each(|show| println!("{show:?}"));
 
     Ok(())
 }
