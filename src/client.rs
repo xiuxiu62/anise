@@ -1,11 +1,11 @@
 use crate::Options;
 
-use std::{error::Error, process, time::Duration};
+use std::{error::Error, fmt::Debug, process, time::Duration};
 
 use fancy_regex::{Matches, Regex};
 use owo_colors::{colors::Red, OwoColorize};
-use scraper::{Html, Selector};
-use ureq::{Agent, AgentBuilder};
+use scraper::{element_ref, html, Html, Selector};
+use ureq::{Agent, AgentBuilder, Response};
 
 const PLAYER_FN: &'static str = "mpv";
 const BASE_API_URL: &'static str = "https://gogoanime.vc";
@@ -40,21 +40,20 @@ impl Client {
     pub fn search_anime<'a>(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
-        let a_selector = Selector::parse("a").unwrap();
 
         let response = self.agent.get(&url).call()?;
-        let doc = Html::parse_document(&response.into_string()?);
-        let titles = doc
-            .select(&a_selector)
-            .filter(|elem| elem.inner_html().contains(&title))
-            .fold(Vec::new(), |mut acc, elem| {
-                if let Some(title) = elem.value().attr("title") {
-                    acc.push(title.to_string());
-                }
-                acc
-            });
+        let titles = query_response_by_selector(response, "a", &|select: html::Select| {
+            select
+                .filter(|elem| elem.inner_html().contains(&title))
+                .fold(Vec::new(), |mut acc, elem| {
+                    if let Some(title) = elem.value().attr("title") {
+                        acc.push(title.to_string());
+                    }
+                    acc
+                })
+        });
 
-        Ok(titles)
+        titles
     }
 
     // Get available episodes from an id
@@ -97,4 +96,20 @@ impl Client {
         self.eprintln("test error");
         process::exit(1);
     }
+}
+
+// Queries an http response by tag
+fn query_response_by_selector<T>(
+    response: Response,
+    tag: &str,
+    query: &dyn Fn(html::Select) -> T,
+) -> Result<T, Box<dyn Error>>
+where
+    T: Sized + Debug,
+{
+    let doc = Html::parse_document(&response.into_string()?);
+    let selector = Selector::parse(tag).unwrap();
+    let result = query(doc.select(&selector));
+
+    Ok(result)
 }
