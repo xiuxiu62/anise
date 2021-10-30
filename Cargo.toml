@@ -8,6 +8,7 @@ name = "ani-cli"
 path = "src/main.rs"
 
 [dependencies]
+thiserror = "1.0.30"
 scraper = "0.12.0"
 structopt = "0.3.25"
 ureq = { version = "2.3.0" }
