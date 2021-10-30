@@ -40,7 +40,7 @@ impl Client {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
         let response = self.agent.get(&url).call()?;
-        let query_method = &|select: html::Select| {
+        let parse_method = &|select: html::Select| {
             select
                 .filter(|elem| elem.inner_html().contains(&title))
                 .fold(Vec::new(), |mut acc: Vec<String>, elem: ElementRef| {
@@ -51,7 +51,7 @@ impl Client {
                 })
         };
 
-        query_response_by_selector(response, "a", query_method)
+        parse_response_by_selector(response, "a", parse_method)
     }
 
     // Get available episodes from a title
@@ -85,17 +85,17 @@ impl Client {
 }
 
 // Queries an http response by tag
-fn query_response_by_selector<T>(
+fn parse_response_by_selector<T>(
     response: Response,
     tag: &str,
-    query_method: &dyn Fn(html::Select) -> T,
+    parse_method: &dyn Fn(html::Select) -> T,
 ) -> Result<T, Box<dyn Error>>
 where
     T: Sized + Debug,
 {
     let doc = Html::parse_document(&response.into_string()?);
     let selector = Selector::parse(tag).unwrap();
-    let result = query_method(doc.select(&selector));
+    let result = parse_method(doc.select(&selector));
 
     Ok(result)
 }
