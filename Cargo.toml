@@ -3,11 +3,12 @@ name = "ani-cli-rs"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "ani-cli"
+path = "src/main.rs"
+
 [dependencies]
-fancy-regex = "0.7.1"
-# reqwest = "0.11.6"
 scraper = "0.12.0"
 structopt = "0.3.25"
-# tokio = { version = "1.12.0", features = ["full"] }
 ureq = { version = "2.3.0" }
 owo-colors = "3.0.1"
