@@ -2,14 +2,13 @@ use crate::Options;
 
 use std::{error::Error, fmt::Debug, process, time::Duration};
 
-use fancy_regex::{Matches, Regex};
 use owo_colors::{colors::Red, OwoColorize};
-use scraper::{element_ref, html, Html, Selector};
+use scraper::{html, ElementRef, Html, Selector};
 use ureq::{Agent, AgentBuilder, Response};
 
-const PLAYER_FN: &'static str = "mpv";
-const BASE_API_URL: &'static str = "https://gogoanime.vc";
-// const LOGFILE: &'static str = "${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts";
+const PLAYER_FN: &str = "mpv";
+const BASE_API_URL: &str = "https://gogoanime.vc";
+// const LOGFILE: &str = "${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts";
 
 pub struct Client {
     agent: Agent,
@@ -21,7 +20,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(options: Options) -> Self {
-        let title = options.title.unwrap_or("".to_string());
+        let title = options.title.unwrap_or_else(String::new);
         let agent = AgentBuilder::new()
             .timeout_read(Duration::from_secs(5))
             .timeout_write(Duration::from_secs(5))
@@ -37,54 +36,41 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub fn search_anime<'a>(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    pub fn search_anime(&self, title: &str) -> Result<Vec<String>, Box<dyn Error>> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
-
         let response = self.agent.get(&url).call()?;
-        let titles = query_response_by_selector(response, "a", &|select: html::Select| {
+        let query_method = &|select: html::Select| {
             select
                 .filter(|elem| elem.inner_html().contains(&title))
-                .fold(Vec::new(), |mut acc, elem| {
+                .fold(Vec::new(), |mut acc: Vec<String>, elem: ElementRef| {
                     if let Some(title) = elem.value().attr("title") {
                         acc.push(title.to_string());
                     }
                     acc
                 })
-        });
+        };
 
-        titles
+        query_response_by_selector(response, "a", query_method)
     }
 
-    // Get available episodes from an id
-    pub fn search_episodes<'r, 't>(
-        &self,
-        id: &str,
-    ) -> Result<Option<Matches<'r, 't>>, Box<dyn Error>> {
-        let url = format!("{}/category/{}", BASE_API_URL, id);
-        let re = Regex::new(
-            r#"/^[[:space:]]*<a href="\#" class="active" ep_start/{
-		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-		q
-		}"#,
-        )?;
+    // Get available episodes from a title
+    pub fn search_episodes(&self, title: &str) -> Result<(), Box<dyn Error>> {
+        let url = format!("{}/category/{}", BASE_API_URL, title);
+        let _response = self.agent.get(&url).call()?;
 
-        let response = self.agent.get(&url).call()?;
-        let data = response.into_string()?;
-        let matches = re.captures_iter(&data);
-
-        Ok(None)
+        Ok(())
     }
 
-    pub async fn get_embedded_video_link<'t>(&self, title: &str, id: &str) -> Option<&'t str> {
+    pub async fn get_embedded_video_link<'t>(&self, _title: &str, _id: &str) -> Option<&'t str> {
         None
     }
 
-    pub async fn get_video_quality<'t>(&self, title: &str, id: &str) -> Option<&'t str> {
+    pub async fn get_video_quality<'t>(&self, _title: &str, _id: &str) -> Option<&'t str> {
         None
     }
 
-    pub async fn get_links<'t>(&self, title: &str) -> Option<&'t str> {
+    pub async fn get_links<'t>(&self, _title: &str) -> Option<&'t str> {
         None
     }
 
@@ -102,14 +88,14 @@ impl Client {
 fn query_response_by_selector<T>(
     response: Response,
     tag: &str,
-    query: &dyn Fn(html::Select) -> T,
+    query_method: &dyn Fn(html::Select) -> T,
 ) -> Result<T, Box<dyn Error>>
 where
     T: Sized + Debug,
 {
     let doc = Html::parse_document(&response.into_string()?);
     let selector = Selector::parse(tag).unwrap();
-    let result = query(doc.select(&selector));
+    let result = query_method(doc.select(&selector));
 
     Ok(result)
 }
