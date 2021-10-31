@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-	A terminal frontend to the gogoanime api.  This is a rust port of <a src="https://github.com/pystardust/ani-cli">pystardust/ani-cli</a>, a bash script which targets mpv for locally streaming anime.  This is anise's strategy as well, additionally taking advantage of rust's robust ecosystem to provide a stable and verbose streaming experience.
+	A terminal frontend to the gogoanime api.  This is a rust port of <a src="https://github.com/pystardust/ani-cli">pystardust/ani-cli</a>, a bash script which targets mpv for locally streaming anime.  This is anise's strategy, additionally taking advantage of rust's robust ecosystem to provide a stable and verbose client experience.
 </p>
 
 ## Goals
