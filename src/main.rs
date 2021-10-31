@@ -2,16 +2,17 @@
 #![feature(format_args_capture)]
 
 mod client;
+mod error;
 mod options;
+mod show;
 
 use client::Client;
+use error::AniseResult;
 use options::Options;
 
 use structopt::StructOpt;
 
-use std::error::Error;
-
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> AniseResult<()> {
     let options = Options::from_args();
     let client = Client::new(options);
     let response = client.search_anime("violet evergarden")?;

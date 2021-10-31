@@ -1,6 +1,6 @@
-use crate::Options;
+use crate::{error::AniseResult, show::Show, Options};
 
-use std::{error::Error, fmt::Debug, process, time::Duration};
+use std::{fmt::Debug, process, time::Duration};
 
 use owo_colors::{colors::Red, OwoColorize};
 use regex::Regex;
@@ -11,12 +11,6 @@ const PLAYER_FN: &str = "mpv";
 const BASE_API_URL: &str = "https://gogoanime.vc";
 // const LOGFILE: &str = "${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts";
 
-#[derive(Debug)]
-struct Show {
-    name: String,
-    id: String,
-}
-
 pub struct Client {
     agent: Agent,
     title: String,
@@ -24,6 +18,8 @@ pub struct Client {
     cont: bool,
     quality: Option<u32>,
 }
+
+type Shows = Vec<Show>;
 
 impl Client {
     pub fn new(options: Options) -> Self {
@@ -43,7 +39,7 @@ impl Client {
     }
 
     // Gets anime names along with their ids
-    pub fn search_anime(&self, title: &str) -> Result<Vec<Show>, Box<dyn Error>> {
+    pub fn search_anime(&self, title: &str) -> AniseResult<Shows> {
         let title = title.replace(' ', "-");
         let url = format!("{BASE_API_URL}//search.html?keyword={title}");
         let response = self.agent.get(&url).call()?;
@@ -59,18 +55,23 @@ impl Client {
         };
 
         let names = parse_response_by_selector(response, "a", parse_method)?;
-        let ids = names.into_iter().map(|name| match strip_title(&name));
+        let ids = names
+            .iter()
+            .map(|name| strip_title(&name))
+            .collect::<AniseResult<Vec<String>>>()?;
         let shows = names
             .into_iter()
             .zip(ids)
-            .map(|(name, id)| Show { name, id })
-            .collect();
+            .fold(Vec::new(), |mut acc, show| {
+                acc.push(Show::from(show));
+                acc
+            });
 
         Ok(shows)
     }
 
     // Get available episodes from a title
-    pub fn search_episodes(&self, title: &str) -> Result<(), Box<dyn Error>> {
+    pub fn search_episodes(&self, title: &str) -> AniseResult<()> {
         let url = format!("{}/category/{}", BASE_API_URL, title);
         let _response = self.agent.get(&url).call()?;
 
@@ -104,7 +105,7 @@ fn parse_response_by_selector<T>(
     response: Response,
     tag: &str,
     parse_method: &dyn Fn(html::Select) -> T,
-) -> Result<T, Box<dyn Error>>
+) -> AniseResult<T>
 where
     T: Sized + Debug,
 {
@@ -115,7 +116,7 @@ where
     Ok(result)
 }
 
-fn strip_title(title: &str) -> Result<String, Box<dyn Error>> {
+fn strip_title(title: &str) -> AniseResult<String> {
     let title = title.to_string().to_lowercase();
     let re_non_alpha_numeric = Regex::new(r"/[^a-z0-9]/g")?;
 
