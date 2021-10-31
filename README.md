@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="https://www.herbganic.co.uk/media/catalog/product/b/a/ba-jiao-hui-xiang.jpg" id="logo" />
+	<img src="static/logo.jpg" />
 </p>
 
 <h1 align="center">
