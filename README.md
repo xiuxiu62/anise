@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="voxel-logo.png" width="200" />
+	<img src="pixel-logo.png" width="200" />
 </p>
 
 <h1 align="center">
